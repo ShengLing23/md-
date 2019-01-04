@@ -22,5 +22,13 @@ Asia/Shanghai
 
 
 
+```java
+public void static main(String[] args){
+    
+}
+```
+
+
+
 
 
