@@ -186,5 +186,119 @@ redis总是将新的节点添加到链表的头部
 
 #### 跳跃表
 
+##### 实现
+
+```c
+//跳跃表
+typedef struct zskiplist{
+    //表头节点与表尾节点
+    struct zskiplistNode * hearder,*tail;
+    //表中节点的数量
+    unsigned long length;
+    //表中层数最大的节点的层数
+} zskiplist;
+
+//跳跃节点
+typedef struct zskiplistNode{
+    //层
+    struct zskiplistLevel{
+        //前进指针
+        struct zskiplistNode *forward;
+        //跨度
+        unsigned int span;
+    } level[];
+    //后退指针
+    struct zskiplistNode *backward;
+    //分值
+    double score;
+    //成员对象
+    robj *obj;
+} zskiplistNode;
+```
+
+##### 重点
+
+* 跳跃表是有序集合的底层实现之一
+* 每个跳跃节点的层高都是1至32之间的随机数
+* 在同一个跳跃表中，多个节点可以包含相同的分值，但是每个节点的对象必须是唯一的
+* 跳跃表中的节点按照分值的大小进行排序，当分值相同时，节点按照成员对象进行排序
+
+#### 压缩列表
+
+##### 结构
+
+| zlbytes | zltail | zllen | entry1 | entry2 | 。。。 | entryN | zlend |
+| ------- | ------ | ----- | ------ | ------ | ------ | ------ | ----- |
+|         |        |       |        |        |        |        |       |
+
+| 属性    | 类型      | 长度  | 描述                                                         |
+| ------- | --------- | ----- | ------------------------------------------------------------ |
+| zlbytes | uint32_t  | 4字节 | 记录整个压缩列表占用的内存                                   |
+| zltail  | uint32_t  | 4字节 | 记录压缩列表表尾节点距离压缩列表的起始地址有多少字节         |
+| zllen   | uint_16_t | 2字节 | 记录了压缩列表的节点数量：小于uint16_max(65536)时，就是节点的真实数量，等于uint_16_max时，需要遍历才能计算出真实的节点数量 |
+| entryX  | 列表节点  |       |                                                              |
+| zlend   | uint8_t   | 1字节 | 特殊值0xFF,用于标记压缩列表的末端                            |
+
+#### 对象
+
+​	redis没有直接使用数据结构来实现键值对数据库，而是基于这些数据结构创建了一个对象系统。
+
+​	这个对象系统包含：字符串对象，列表对象，哈希对象，集合对象和有序集合对象
+
+​	redis的对象还实现了居于引用计数技术的内存回收机制。
+
+##### 对象的类型和编码
+
+​	redis使用对象来表示数据库中的键和值，每次创建一个键值对时，至少创建两个对象，一个对象用作键值对的键，另一个对象用作键值对的值。
+
+```c
+typedef struct redisObject{
+    //类型
+    unsigned type:4;
+    //编码
+    unsigned encoding:4;
+    //指向底层实现数据结构的指针
+    void *prt;
+} robj;
+
+/**redisObject中type的取值:
+*    类型常量 | 对象的名称
+*    REDIS_STRING | 字符串对象 
+*    REDIS_LIST	  | 列表对象
+*	 REDIS_HASH   | 哈希对象
+*	 REDIS_SET	  | 集合对象
+*    REDIS_ZSET	  | 有序集合对象
+*/
+```
+
+###### 编码和底层实现
+
+对象的prt指针指向对象的底层实现数据结构，而这些数据结构有对象的encoding属性决定，
+
+| 编码常量                | 编码对应的底层数据结构     |
+| ----------------------- | -------------------------- |
+| REDIS_ENCODING_INT      | long类型的                 |
+| REDIS_ENCODING_EMBSTR   | embstr编码的简单动态字符串 |
+| REDIS_ENCODING_RAW      | 简单动态字符串             |
+| REDIS_ENCODING_HT       | 字典                       |
+| REDIS_ENCODING_LINKDLST | 双端列表                   |
+| REDIS_ENCODING_ZIPLIST  | 压缩列表                   |
+| REDIS_ENCODING_INTSET   | 整数集合                   |
+| REDIS_ENCODING_SKIPLIST | 跳跃表和字典               |
+
+###### 每种对象可以使用的编码对象
+
+| 类型         | 编码                    |
+| ------------ | ----------------------- |
+| REDIS_STRING | REDIS_ENCODING_INT      |
+|              | REDIS_ENCODING_EMBSTR   |
+|              | REDIS_ENCODING_RAW      |
+| REDIS_LIST   | REDIS_ENCODING_ZIPLIST  |
+|              | REDIS_ENCODING_LINKDLST |
+| REDIS_HASH   | REDIS_ENCODING_ZIPLIST  |
+|              | REDIS_ENCODING_HT       |
+| REDIS_ZSET   | REDIS_ENCODING_ZIPLIST  |
+|              | REDIS_ENCODING_SKIPLIST |
+
 
 

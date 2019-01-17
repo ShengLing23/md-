@@ -8,7 +8,7 @@
 # native 即 Java native interface
 # 
 # java10 以上废除了javah命令，使用javac -h 命令替代，命令格式为：
-#	           javac -h  <生产文件地址>  源.java
+# javac -h  <生产文件地址>  源.java
 ```
 
 
