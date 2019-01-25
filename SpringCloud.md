@@ -1303,4 +1303,32 @@ spring.cloud.config.label=master
 
 ##### 2、未完
 
+### 服务链路追踪 spring cloud Sleuth
+
+#### 1、基本术语
+
+1、Span：基本工作单元，发送一个远程调度任务就会产生一个Span,Span是用一个64为ID唯一标识的。Span还包含其他的信息，例如：摘要，时间戳，Span的ID和进程的ID
+
+2、Trance：由一系列的Span组成的，呈树状结构。请求一个微服务接口，这个API接口需要调用多个微服务单元，调用的每个微服务单元都会产生一个新的Span，所有由这个请求产生的Span组成了这个Trance
+
+3、Annotation：用于记录一个事件，一些核心注解用户定义一个请求的开始和结束。注解如下：
+
++ cs-Client Sent : 客户端发送一个请求，这个注解描述了Span的开始
++ sr-Server Received ： 服务端获得请求并准备开始处理它，如果将sr减去cs的时间戳，便可以得到网络传输的时间
++ ss-Server Sent：服务端发送响应，该注解表名请求处理完成。用ss减去sr便可以得到服务器请求的时间
++ cr-Client Received：客户端接收响应，此时Span结束，如果cr时间戳减去cs时间戳，便可以得到整个请求所消耗的时间
+
+#### 2、案例
+
+##### 1、ZipKin-Server
+
+​	spring cloud在F版本时，已经不需要自己构建ZipKin服务了
+
+##### 2、user-service 服务提供者
+
 ​	
+
+
+
+
+
