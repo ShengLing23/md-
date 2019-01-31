@@ -1,12 +1,14 @@
 
 
+
+
 # spring技术内幕--笔记
 
 ## BeanFactory
 
 ### Ioc容器接口设计图
 
-![BeanFactory](G:\md笔记\img\BeanFactory.png)
+![BeanFactory](.\img\BeanFactory.png)
 
 | 接口                       | 说明                                                         |
 | -------------------------- | ------------------------------------------------------------ |
@@ -45,21 +47,183 @@ reader.loadBeanDefinitions(res);
 
 #### 1、Resource定位过程
 
-​	![filesystemXml](G:\md笔记\img\filesystemXml.png)
+FileSystemXmlApplicationContext的继承结构体系
+
+```java
+//从上到下，依次继承了下去
+DefaultResourceLoader   	//getResource()   
+AbstractApplicationContext  //refresh()方法
+AbstractRefreshableApplicationContext   //refreshBeanFactory
+AbstractRefreshableConfigApplicationContext  //设置了配置文件的路径
+AbstractXmlApplicationContext	//创建了
+FileSystemXmlApplicationContext 
+```
+
+FileSystemXmlApplication的资源定位过程（关键代码），分析：
+
+```java
+//1、FileSystemXmlApplicationContext的构造函数
+public FileSystemXmlApplicationContext(String[] configLocations, boolean refresh, @Nullable ApplicationContext parent) throws BeansException {
+        super(parent);
+    	//设置配置文件路径，这个方法在：AbstractRefreshableConfigApplicationContext类中实现
+        this.setConfigLocations(configLocations);
+        if (refresh) {
+            //这个方法在：AbstractApplicationContext类中
+            this.refresh();
+        }
+    }
+/**
+*2、AbstractApplicationContext类的refresh()方法
+*   在refresh()方法中，调用了obtainFreshBeanFactory()方法，
+*	在obtainFreshBeanFactory()方法中，调用了refreshBeanFactory()方法，
+*	这个方法，是一个抽象方法，具体实现是在AbstractRefreshableApplicationContext类中
+*/
+ConfigurableListableBeanFactory beanFactory = this.obtainFreshBeanFactory();
+//obtainFreshBeanFactory()方法中，调用
+this.refreshBeanFactory();
+/**
+* 3、AbstractRefreshableApplicationContext
+*   在refreshBeanFactory()方法中，创建了beanFactory工厂
+*	调用loadBeanDefinitions方法
+*/
+protected final void refreshBeanFactory() throws BeansException {
+        if (this.hasBeanFactory()) {
+            this.destroyBeans();
+            this.closeBeanFactory();
+        }
+
+        try {
+            //创建beanFactory
+            DefaultListableBeanFactory beanFactory = this.createBeanFactory();
+            beanFactory.setSerializationId(this.getId());
+            this.customizeBeanFactory(beanFactory);
+            //抽象方法，具体的实现在子类AbstractXmlApplicationContext中
+            this.loadBeanDefinitions(beanFactory);
+            …… //执行到上面一步，进入下面的方法
+               
+
+/**
+*4、AbstractXmlApplicationContext
+*   创建了XmlBeanDefinitionReader读取器
+*/
+protected void loadBeanDefinitions(DefaultListableBeanFactory beanFactory)
+    						throws BeansException, IOException {
+        XmlBeanDefinitionReader beanDefinitionReader = new XmlBeanDefinitionReader(beanFactory);
+        beanDefinitionReader.setEnvironment(this.getEnvironment());
+        beanDefinitionReader.setResourceLoader(this);
+        beanDefinitionReader.setEntityResolver(new ResourceEntityResolver(this));
+        this.initBeanDefinitionReader(beanDefinitionReader);
+        this.loadBeanDefinitions(beanDefinitionReader);
+    }
+
+protected void loadBeanDefinitions(XmlBeanDefinitionReader reader)
+    								throws BeansException, IOException {
+        Resource[] configResources = this.getConfigResources();
+        if (configResources != null) {
+            reader.loadBeanDefinitions(configResources);
+        }
+
+        String[] configLocations = this.getConfigLocations();
+        if (configLocations != null) {
+            reader.loadBeanDefinitions(configLocations);
+        }
+    }
+
+/**
+* 5、AbstractBeanDefinitionReader类
+*	loadBeanDefinitions
+*/
+public int loadBeanDefinitions(String... locations) throws BeanDefinitionStoreException {
+        Assert.notNull(locations, "Location array must not be null");
+        int count = 0;
+        String[] var3 = locations;
+        int var4 = locations.length;
+        for(int var5 = 0; var5 < var4; ++var5) {
+            String location = var3[var5];
+            count += this.loadBeanDefinitions(location);
+        }
+        return count;
+    }
+
+
+ public int loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources) 
+     									throws BeanDefinitionStoreException {
+     //获取资源加载器  
+     ResourceLoader resourceLoader = this.getResourceLoader();
+       
+                    //getResources调用FileSystemXmlApplicationContext的getResourceByPath函数
+                    //到这一步，资源定位已经完成；
+                    Resource[] resources = ((ResourcePatternResolver)resourceLoader).getResources(location);
+                    //这一步，开启资源载入和解析进入
+                    //
+                    count = this.loadBeanDefinitions(resources);
+                   
+  /**
+  *  6.XmlBeanDefinitionReader类
+  */
+   // loadBeanDefinitions()方法    
+   InputStream inputStream = encodedResource.getResource().getInputStream();
+   var5 = this.doLoadBeanDefinitions(inputSource, encodedResource.getResource());   
+   //doLoadBeanDefinitions方法
+   Document doc = this.doLoadDocument(inputSource, resource);// 将xml转化为Document文档
+   int count = this.registerBeanDefinitions(doc, resource);//解析BeanDefinition过程                 
+```
 
 
 
-
+![资源定位](.\img\资源定位.png)
 
 #### 2、BeanDefinition的载入过程
 
 #### 3、向IOC容器注册这些BeanDefinition的过程
 
+## AOP
+
+### Advice通知
+
+​	advice定义在连接点做什么。
+
+### Pointcut切点
+
+​	Pointcut(切点)决定Advice通知应该作用于那个连接点。
+
+### Advisor通知器
+
+​	完成对目标方法的切面增强设计（Advice）和关注点的设计（Pointcut）后，需要一个对象把它们结合起来
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+​	
 
 
 
