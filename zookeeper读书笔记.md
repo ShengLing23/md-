@@ -1,4 +1,4 @@
-# zookeeper读书笔记
+# 概念和基础
 
 ## zookeeperde的使命
 
@@ -186,12 +186,55 @@ CONNECTED --> |5|CLOSE
 
 ​     当客户端与zookeeper服务器断开连接或无法收到服务器的响应时，他就会转换回connecting状态。并尝试发现zookeeper服务器。如果可以发现另一个服务器或重新连接到原来的服务器，当服务器确认会话有效后，状态又会转换回connected状态，否则，它会声明会话过期，然后转换到closed。
 
-
-
 创建一个会话时，你需要设置会话超时时间这个重要的参数。
 
 * 这个参数设置了zookeeper服务运行会话被声明为超时之前存在的时间。如果经过时间t之后服务器收不到这个会话的任何消息，服务就会声明会话过期。
 * 而在客户端，如果经过了t/3的时间未收到任何消息，客户端将向服务器发送心跳消息。在经过2t/3时间后，zookeeper客户端开始寻找其他的服务器，而此时它还有t/3时间去寻找。
+
+# 开发
+
+## zookeeper的API
+
+### zookeeper会话
+
+​	zookeeper的API围绕zookeeper的句柄而构建，每个API的调用都需要传递这个句柄。
+
+```java
+/**
+* 创建Zookeeper句柄的构造函数。
+* connectString:主机名和服务器的端口
+* sessionTimeout：以毫秒为单位，表示zookeeper等待客户端通信的最长时间
+* Watcher : 用以接收会话事件的一个对象，这个对象需要我们自己创建。
+*/
+Zookeeper(String connectString,int sessionTimeout,Watcher watcher);
+
+//Watcher接口定义
+public interface Watcher{
+    void process(WatchedEvent event)；
+}
+```
+
+**注意** ：不要自己试着去管理zookeeper客户端的连接，zookeeper客户端库会监控与服务之间的连接，客户端不仅会告诉我们连接发生问题，还会主动的尝试重新建立通信。
+
+
+
+## 处理状态变化
+
+### 如何设置监视点
+
+​	zookeeper的API中的所有的读操作：getData、getChildren和exists，均可以选择在读取的zonde节点上设置监视点。使用监视点机制，我们需要实现Watcher接口类。实现其中的process方法
+
+```java 
+public void process(WatchedEvent event);
+
+/*
+*   WatchedEvent数据结构包括如下信息：
+*   1、zookeeper的会话状态（keeperstate）: 					   *Disconnected,SyncConnected,AuthFaild,ConnectedReadOnly,saslAuthenticated和Expired
+*   2、事件类型（EventType）: NodeCreated,NodeDeleted、NodeDataChanged、NodeChildrenChanged和None
+*   3、如果事件类型不是None时，会返回一个znode路径
+*
+*/
+```
 
 
 
