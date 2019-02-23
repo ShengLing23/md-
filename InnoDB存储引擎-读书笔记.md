@@ -47,16 +47,16 @@ innodb_file_io_threads
 
 ​	从InnoDB 1.1版本开始，purge操作可以独立到单点的线程中进行。
 
-       ```shell
+```shell
 # 用户可以在mysql数据库的配置文件中添加如下命令来启动独立的purge thread:
 # 在InnoDB 1.1版本中，purge_thread只能为1
 # 从InnoDB 1.2版本开始，InnoDB支持多个Purge Thread.
 [mysqld]
 innodb_purge_threads=1
-
 # 以下命令查看
 show variables like 'innodb_purge_threads'\G
-       ```
+```
+
 
 #### 4、Page  Cleaner Thread
 
@@ -110,8 +110,6 @@ innodb_old_blocks_pct=37
 # 当需要从缓冲池分页时，首先从Free列表中查找是否有可用的空闲页，若有则将该页从Free列表删除，放入到LRU列表中。
 # 否则，根据LRU算法，淘汰LRU列表末尾的页，将该内存空间分配给新的页
 ```
-
-
 
 #### 3、重做日志缓冲
 
