@@ -43,7 +43,9 @@
 hadoop fs -copyFromLocal  sourcePath targetPath
 ```
 
+# MapReduce
 
+​	MapReduce是一种可以用于数据处理的编程模型。
 
-
+​	MapReduce任务分为两个处理阶段：map阶段和reduce阶段。每个阶段都以键-值对作为输入和输出，其类型由程序员选择。
 
