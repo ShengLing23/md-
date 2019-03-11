@@ -170,8 +170,6 @@ objB.instance = objA
 | -XX:MaxGCPauseMil | 控制最大垃圾回收停顿时间 |
 | -XX:GCTimeRatio   | 设置吞吐量大小的         |
 
-
-
 #### Serial Old收集器
 
 #### Parallel Old收集器
