@@ -1,5 +1,13 @@
 ## git 的使用
 
+### 知识点
+
+#### Git如何知道当前在哪个分支？
+
+​	它有一个名为```HEAD```的特殊指针，它指向当前的本地分支。
+
+
+
 ### 起步
 
 #### 1、初始化
@@ -67,6 +75,20 @@ git remote rm [shortname]
 ```
 
 ### 分支
+
+#### 分支创建
+
+```shell
+git branch testing
+# 仅仅创建一个新分支，并不会自动切换的新分支
+```
+
+#### 分支切换
+
+```shell
+git checkout testing
+# HEAD指针就 指向testing分支了
+```
 
 
 
