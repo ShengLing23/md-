@@ -288,17 +288,143 @@ typedef struct redisObject{
 
 ###### 每种对象可以使用的编码对象
 
-| 类型         | 编码                    |
-| ------------ | ----------------------- |
-| REDIS_STRING | REDIS_ENCODING_INT      |
-|              | REDIS_ENCODING_EMBSTR   |
-|              | REDIS_ENCODING_RAW      |
-| REDIS_LIST   | REDIS_ENCODING_ZIPLIST  |
-|              | REDIS_ENCODING_LINKDLST |
-| REDIS_HASH   | REDIS_ENCODING_ZIPLIST  |
-|              | REDIS_ENCODING_HT       |
-| REDIS_ZSET   | REDIS_ENCODING_ZIPLIST  |
-|              | REDIS_ENCODING_SKIPLIST |
+| 类型         | 编码                    |                            |
+| ------------ | ----------------------- | -------------------------- |
+| REDIS_STRING | REDIS_ENCODING_INT      | long类型的                 |
+|              | REDIS_ENCODING_EMBSTR   | embstr编码的简单动态字符串 |
+|              | REDIS_ENCODING_RAW      | 简单动态字符串             |
+| REDIS_LIST   | REDIS_ENCODING_ZIPLIST  | 压缩列表                   |
+|              | REDIS_ENCODING_LINKDLST | 双端列表                   |
+| REDIS_HASH   | REDIS_ENCODING_ZIPLIST  | 压缩列表                   |
+|              | REDIS_ENCODING_HT       | 字典                       |
+| REDIS_SET    | REDIS_ENCODING_INTSET   | 整数集合                   |
+|              | REDIS_ENCODING_HT       | 字典                       |
+| REDIS_ZSET   | REDIS_ENCODING_ZIPLIST  | 压缩列表                   |
+|              | REDIS_ENCODING_SKIPLIST | 跳跃表和字典               |
+
+###### 优点
+
+通过encoding属性来设定对象所使用的编码，而不是为特定的对象关联一种固定的编码，极大的提升了redis的灵活性和效率。
+
+##### 字符串对象
+
+​	字符串对象的编码可以是：int、raw或者embstr
+
+* 如果字符串对象保存的时整数值，并且这个整数值可以用long类型来表示，那么字符串对象的编码设置为int
+* 如果字符串对象保存的是一个字符串值，并且这个字符串值的长度大于32字节，那么字符串对象的编码设置为raw.
+* 如果字符串对象保存的是一个字符串值，并且长度小于等于32字节，字符串对象的编码为embstr
+
+###### 命令
+
+| 命令        | int编码实现                                                | embstr编码实现                       | raw编码实现                                             |
+| ----------- | ---------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------- |
+| SET         | 使用int编码保存                                            | 使用embstr编码保存                   | 使用编码保存                                            |
+| GET         | 拷贝对象所保存的整数值，并将拷贝值转为字符串，返回给客户端 | 直接返回                             | 直接返回                                                |
+| APPEND      | 将对象转为raw编码，然后按raw编码操作                       | 将对象转为raw编码，然后按raw编码操作 | 调用sdscatlen函数，将给定的字符串追加到现有字符串的末尾 |
+| INCRBYFLOAT |                                                            |                                      |                                                         |
+| INCRBY      | 对整数值进行加法操作                                       | 不能执行此命令                       | 不能执行此命令                                          |
+| DECRBY      | 对整数值惊喜剑法操作                                       | 不能执行此命令                       | 不能执行此命令                                          |
+| STRLEN      | 拷贝整数值，将其转为字符串，计算返回字符串的长度           | 调用sdslen函数，返回字符串长度       | 调用sdslen函数，返回字符串长度                          |
+| SETRANGE    | 将对象转为raw编码，然后按raw编码操作                       | 将对象转为raw编码，然后按raw编码操作 | 将字符串特定索引上的值                                  |
+| GETRANGE    | 拷贝整数值，将其转为字符串，然后返回字符串指定索引的字符   | 直接取出，并返回给定索引上的字符     | 直接取出，并返回给定索引上的字符                        |
+
+##### 列表对象
+
+​	列表对象的编码可以是：ziplist或者linkedlist
+
+1、当列表对象可以同时满足如下两个条件时，列表对象可以使用ziplist编码
+
+* 列表对象保存的所有字符串元素的长度都小于64字节
+* 列表对象保存的元素数量小于512个
+
+2、不满足以上两个条件的列表对象需要使用linkedlist编码
+
+###### 命令
+
+| 命令    | ziplist编码                                                  | linkedlist编码                                               |
+| ------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| LPUSH   | 调用ziplistPush函数，将 新元素推入到压缩列表的表头           | 调用listAndNodeHead函数，将新元素推入到双端列表的表头        |
+| RPUSH   | 调用ziplistPush函数，将 新元素推入到压缩列表的表尾           | 调用listAndNodeTail函数，将新元素推入到双端列表的表尾        |
+| LPOP    | 调用ziplistIndex函数定位压缩列表的表头节点，在向用户返回节点所保存的元素之后，调用ziplistDelete函数删除表头节点。 | 调用listFirst函数定位双端链表的表头，在向用户返回节点所保存的元素之后,调用listDelNode函数删除表头节点 |
+| RPOP    | 调用ziplistIndex函数定位压缩列表的表尾节点，在向用户返回节点所保存的元素之后，调用ziplistDelete函数删除表头节点。 | 调用listLast函数定位双端链表的表头，在向用户返回节点所保存的元素之后,调用listDelNode函数删除表头节点 |
+| LINDEX  | 调用ziplistIndex函数定位压缩列表中的指定节点，然后返回节点所保存的元素 | d调用listIndex函数定位双端列表中指定节点，然后返回节点保存的元素 |
+| LLEN    | 调用ziplistLen函数返回压缩列表的长度                         | 调用listLength函数返回双端列表的长度                         |
+| lINSERT | 插入新节点到压缩列表的表头或者表尾，使用ziplistPush函数；插入新节点到压缩列表其他位置时，使用zipListInsert函数 | 调用listInsertNode函数，将新节点插入到双端列表的指定位置     |
+| LREM    | 遍历压缩列表，并调用ziplistDelete函数删除包含了给定元素的节点 | 遍历双端列表，并调用listDelNode函数删除包含了给定元素的节点  |
+| LTRIM   | 调用ziplistDeleteRange函数，删除压缩列表中所有不在指定索引范围内的节点 | 遍历双端列表，并调用listDelNode函数删除链表中所有不再指定索引范围内的节点 |
+| LSET    | 调用ziplistDelete函数，先删除压缩列表只当索引上现有的节点，然后调用ziplistInsert函数，将一个包含给定元素的新节点插入到相同的索引上 | d调用listIndex函数，定位到双端列表只当索引上的节点，然后通过赋值操作更新节点的值 |
+
+##### 哈希对象
+
+ 	哈希对象的编码可以时ziplist或者hashtable
+
+1、当哈希对象可以同时满足以下两个条件时，哈希对象使用ziplist编码
+
+- 哈希对象保存的所有字符串元素的长度都小于64字节
+- 哈希对象保存的元素数量小于512个
+
+2、不能满足以上两个条件的哈希对象使用hashtable编码
+
+###### 命令
+
+| 命令    | 含义 |
+| ------- | ---- |
+| HSET    |      |
+| HGET    |      |
+| HEXISTS |      |
+| HDEL    |      |
+| HLEN    |      |
+| HGETALL |      |
+
+##### 集合对象
+
+​	集合对象的编码：intset 或者 hashtable
+
+1、当集合对象满足下列条件时，对象使用intset编码
+
+* 集合对象保存的所有元素时整数值
+* 集合对象保存的元素数量不超过512个
+
+2、不满足这两个条件的使用hashtable编码
+
+###### 命令
+
+| 命令        | 含义                                       |
+| ----------- | ------------------------------------------ |
+| SADD        | 添加                                       |
+| SCARD       | 返回集合数量                               |
+| SISMEMBER   | 查询元素释放存在于集合中                   |
+| SMEMBERS    | 返回集合元素                               |
+| SRANDMEMBER | 从集合中随机返回一个值                     |
+| SPOP        | 从集合中随机返回一个值，并将其从集合中删除 |
+| SREM        | 删除给定元素                               |
+
+##### 有序集合对象
+
+​	有序集合的编码可以时ziplist或者skiplist
+
+1、当有序集合对象可以同时满足以下两个条件时，对象使用ziplist编码
+
+* 有序集合保存的元素数量小于128
+* 有序集合保存的所有元素成员的长度都小于64字节
+
+2、不满足以上条件的有序集合对象，使用skiplist编码
+
+###### 命令
+
+| 命令      | 含义                                   |
+| --------- | -------------------------------------- |
+| ZADD      | 添加                                   |
+| ZCARD     | 集合的数量                             |
+| ZCOUNT    | 统计分值在给定范围内的节点数量         |
+| ZRANGE    | 返回给定索引范围内的所有元素(从头开始) |
+| ZREVRANGE | 返回给定索引范围内的所有元素(从尾开始) |
+| ZRANK     | 元素排名（从头开始）                   |
+| ZREVRANK  | 元素排名（从尾开始）                   |
+| ZREW      | 删除给定元素                           |
+| ZSCORE    | 获取给定元素的分值                     |
 
 
+
+### 数据库
 
