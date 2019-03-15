@@ -50,6 +50,16 @@ make install
 
 ```
 
+## 4、JDK安装
+
+```shell
+# vim /etc/profile
+export JAVA_HOME=/selfPath
+export JRE_HOME=/selfPath
+export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME:bin
+```
+
 
 
 # 命令

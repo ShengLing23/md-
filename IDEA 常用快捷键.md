@@ -34,4 +34,6 @@
 | 打开最近修改的文件                | recently files                | ctrl + e               |
 | 快速搜索类中的错误                | next highlighted error        | f2                     |
 | 查找方法在哪里被调用              | call hierarchy                | ctrl + alt + h         |
+| 手动导包                          |                               | alt + enter            |
+| 重构：修改变量名和方法名          |                               | alt + shift + r        |
 
