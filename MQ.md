@@ -13,7 +13,7 @@
 
 ### 结构模型
 
-![1553397983056](D:\data\md笔记\img\RabbitMq.png)
+![1553397983056](.\img\RabbitMq.png)
 
 * Producer：生产者
 * Consumer：消费者
@@ -120,9 +120,48 @@ rabbitmqctl list_user_permissions username
   ```
 
 
-
-
 ## 客户端开发
 
-### 连接RabbitMQ
+### HelloWord
+
+```java
+			ConnectionFactory factory = new ConnectionFactory();
+        	factory.setHost(host);
+        	factory.setPort(port);
+        	factory.setUsername(userName);
+        	factory.setPassword(password);
+      		Connection connection =  factory.newConnection();
+            //创建信道
+	        Channel channel = connection.createChannel();
+			//创建交换器
+            channel.exchangeDeclare("myExchangeDeclare","direct",true,false,null);
+			//创建队列
+            channel.queueDeclare("myQueue",true,false,false,null);
+            /*
+             * 绑定交换器和队列
+             */
+            channel.queueBind("myQueue","myExchangeDeclare","routingKey_demo");
+			//发送
+            String message = "Hello world";
+            channel.basicPublish("myExchangeDeclare","routingKey_demo",
+                    MessageProperties.PERSISTENT_TEXT_PLAIN,
+                    message.getBytes()
+                    );
+            channel.close();
+            connection.close();
+```
+
+### 创建队列和交换器API
+
+```java
+exchangeDeclare(String exchangeName,String type,boolean durable,boolean,  	                             autoDelete,boolean internal,Map<String,Object> argument)
+```
+
+```java
+queueDeclare(String queueName,boolean durable,boolean exclusive,boolean                                   autoDelete,Map<String,Object> argument)
+```
+
+```java
+queueBind(String queueName,String exchangeName,String routingKey,                                         Map<String,Object> arguments)
+```
 
