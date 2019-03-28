@@ -306,6 +306,22 @@ typedef struct redisObject{
 
 通过encoding属性来设定对象所使用的编码，而不是为特定的对象关联一种固定的编码，极大的提升了redis的灵活性和效率。
 
+#### key操作
+
+| 命令                  | 含义                        |
+| --------------------- | --------------------------- |
+| keys  *               | 查看当前库的所有键          |
+| exists  <key>         | 查看 key 是否存在           |
+| del  <key>            | 删除 key                    |
+| expire <key> <second> | 设置key的过期时间           |
+| ttl <key>             | 查看 key 还有多长的存活时间 |
+| move <key>  <db>      | 把key移动到另一个库下       |
+| dbsize                | 查看数据库KEY数量           |
+| flushdb               | 情况当前库                  |
+| flhshall              | 通杀所有库                  |
+
+
+
 ##### 字符串对象
 
 ​	字符串对象的编码可以是：int、raw或者embstr
@@ -426,5 +442,7 @@ typedef struct redisObject{
 
 
 
-### 数据库
+## 应用场景
+
+
 
