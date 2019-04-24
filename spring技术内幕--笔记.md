@@ -193,6 +193,8 @@ public int loadBeanDefinitions(String... locations) throws BeanDefinitionStoreEx
 
 
 
+# 生命周期
+
 
 
 
