@@ -1,8 +1,8 @@
-## jdk源码阅读笔记
+# jdk源码阅读笔记
 
-#### Object
+## Object
 
-##### 1、native关键字
+### 1、native关键字
 
 ```shell
 # native 即 Java native interface
@@ -11,9 +11,7 @@
 # javac -h  <生产文件地址>  源.java
 ```
 
-
-
-##### 2、方法
+### 2、方法
 
 ```java
 //native 方法
@@ -32,8 +30,4 @@ public final void wait(long timeoutMillis, int nanos) throws InterruptedExceptio
 										// wait(timeoutMillis)
 ```
 
-
-
-```
-transient
-```
+## 
