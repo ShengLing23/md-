@@ -113,6 +113,8 @@ innodb_old_blocks_pct=37
 
 #### 3、重做日志缓冲
 
+
+
 #### 4、Checkpoint技术
 
 
