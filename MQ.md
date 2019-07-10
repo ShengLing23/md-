@@ -165,3 +165,332 @@ queueDeclare(String queueName,boolean durable,boolean exclusive,boolean         
 queueBind(String queueName,String exchangeName,String routingKey,                                         Map<String,Object> arguments)
 ```
 
+# Kafka
+
+## 术语
+
+【消息和批次】
+
+Kafka的数据单元被称为消息。可以把消息看成是数据库里的一个"数据行"或一条记录。消息由字节数组组成。
+
+为了提高效率，消息被分批次写入Kafka.批次就是一组消息，这些消息属于同一个主题和分区
+
+【主题和分区】
+
+Kafka的消息通过主题进行分类。主题好比数据库的表。
+
+主题可以分为若干个分区，一个分区就是一个提交日志。消息以追加的方式写入分区，然后以先入先出的顺序读取。
+
+【注意】一个主题可以包含几个分区，因此无法在整个主题的范围内保证消息的顺序，但是可以保证消息在分区内的顺序。
+
+【生产者和消费者】
+
+生产者创建消息。一般情况下，一个消息会被发布到一个特定的主题上。生产者在默认情况下把消息均衡的分布到主题的所有分区上。
+
+消费者读取消息。消费者订阅一个或多个主题，并安装消息生产的顺序读取它们。消费者通过检查消息的偏移量来区分已经读取过的消息。
+
+消费者是消费者群组的一部分，也就是说，会由一个或多个消费者共同读取一个主题。群组保证每个分区只能被一个消费者使用。
+
+【broker和集群】
+
+一个独立的Kafka服务器被称为broker.
+
+## 为什么选择Kafka
+
+多个生产者
+
+多个消费者
+
+基于磁盘的数据存储
+
+伸缩性
+
+高性能
+
+## 安装
+
+### 配置
+
+#### 常规配置
+
+【broker.id】
+
+​	每个broker都需要一个标识符，使用broker.id表示。他的默认值是0,也可以被设置位任何整数。这个值在整个Kafka集群里必须是唯一的。
+
+【port】
+
+​	如果使用配置样本来使用Kafka,他会监听9092端口。修改port参数可以把它设置为其他任何可用的端口。
+
+【zookeeper.connect】
+
+​	用于保存broker元数据的Zookeeper地址是通过该参数指定的。
+
+【log.dirs】
+
+​	Kafka把所有信息都保存在磁盘上，存放这些日子片段的目录是通过log.dirs指定的。用逗号分隔，如果指定多个路径，那么broker会根据“最少使用”原则，把同一个分区的日志片段保存在同一路径下。
+
+【num.recovery.threads.per.data.dir】
+
+​	对于如下3种情形，Kafka会使用可配置的线程池来处理日志片段：
+
+​	1、服务器正常启动，用户打开每个分区的日志片段
+
+ 	2、服务器崩溃后重启，用于检查和截短每个分区的日志片段
+
+​	3、服务器正常关闭，用户关闭日志片段。
+
+​	设置此参数时，所配置的数字对应的是log.dirs指定的单个日志目录。即：如果num.recovery.threads.per.data.dir设为8，log.dir指定了3个路径，则总的线程数为24.
+
+【auto.create.topics.enable】
+
+#### 主题的默认配置
+
+【num.partitions】
+
+【log.retention.ms】
+
+【log.retention.bytes】
+
+【log.segment.ms】
+
+【message.max.bytes】
+
+### 硬件的选择
+
+#### 磁盘吞吐量
+
+​	生产者客户端的性能直接受到服务器端磁盘吞吐量的影响。生产者生成的消息必须被提交到服务器保存。大多数客户端在发送消息后会一直等待。直到至少一个服务器确认消息已经成功提交为止。【磁盘写入速度越快，生成消息的延迟就越低】
+
+#### 磁盘容量
+
+#### 内存
+
+​	服务器可用内存是影响客户端性能的主要因素。磁盘性能影响生产者，而内存影响消费者。消费者一般从分区尾部读取消息，如果有生产者存在，就紧跟在生产者后面。
+
+## 向Kakfa写入数据
+
+向Kakfa写入消息的步骤图：
+
+![1558333276182](.\img\1558333276182.png)
+
+#### 客户端
+
+```java
+package com.shengling.kafkatest;
+
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import sun.applet.Main;
+
+
+import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+
+/**
+ * @author shengling23
+ * @create 2019-05-20 14:23
+ */
+public class SendDemo {
+
+    private Properties kafkaProp = new Properties();
+    private KafkaProducer<String,String> producer;
+
+    private class ProducterCallBack implements Callback{
+
+        @Override
+        public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+            if (e != null){
+                e.printStackTrace();
+            }
+            System.out.println("topicName"+recordMetadata.topic());
+            System.out.println("toString"+recordMetadata.toString());
+        }
+    }
+
+    public void init(){
+        kafkaProp.put("bootstrap.servers","localhost:9092");
+        kafkaProp.put("key.serializer","org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProp.put("value.serializer","org.apache.kafka.common.serialization.StringSerializer");
+        producer = new KafkaProducer(kafkaProp);
+    }
+
+    /**
+     * 发送并忘记
+     * 把消息发送给服务器，并不关心它是否正常到达
+     */
+    public void fireAndForgetSend(){
+        ProducerRecord<String,String> record =
+                new ProducerRecord<>("CustomerCountry","Products","France");
+
+        producer.send(record);
+
+    }
+
+    /**
+     * 同步发送
+     * 使用send发送消息，返回一个Future对象。调用get方法进行等待，就可以知道是否发送成功。
+     */
+    public void syncSend(){
+        ProducerRecord<String,String> record =
+                new ProducerRecord<>("CustomerCountry","Products","Raiss");
+
+        try {
+            producer.send(record).get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 异步发送
+     * 使用send发送消息，并指定一个回调方法，服务器在返回响应式，回调该方法
+     */
+    public void asyncSend(){
+        ProducerRecord<String,String> record =
+                new ProducerRecord<>("CustomerCountry","Products","England");
+
+        producer.send(record,new ProducterCallBack());
+    }
+
+    public static void main(String[] args) {
+        SendDemo sendDemo = new SendDemo();
+        sendDemo.init();
+        sendDemo.syncSend();
+    }
+}
+```
+
+#### 生产者配置
+
+【acks】
+
+```shell
+# acks参数指定了必须有多少个分区副本收到消息，生产者才会认为消息写入是成功的。
+acks=0 
+	# 生产者在成功写入消息之前不会等待来自任何服务器的响应。
+	# 如果出现问题，导致服务器没有收到消息，那么生产者无从得知。消息就丢失了
+	# 生产者不需要等待服务器的响应，它可以以网络能够支持的最大速度发消息，从而达到很高的吞吐量
+acks=1
+	# 只要集群的首领节点收到消息，生产者就会收到一个来自服务器的成功响应。
+acks=all
+	# 只有当所有参与复制的节点全部收到消息时，生产者才会收到一个来自服务器的成功响应
+```
+
+【buffer.memory】
+
+```shell
+# 该参数用来设置生产者内存缓冲区的大小。
+```
+
+【compression.type】
+
+```shell
+# 默认情况下，消息发送时不会被压缩。该参数可以设置为：snappy,gzip或lz4
+```
+
+【retries】
+
+```shell
+# 生产者从服务器收到的错误有可能是临时的错误。在这种情况下，retries参数的值决定了生产者可以重发消息的次数
+```
+
+【batch.size】
+
+### 序列化器
+
+## 从Kafka读取数据
+
+
+
+
+
+## 深入Kafka
+
+### 1、集群成员关系
+
+​	Kafka使用zookeeper来维护集群成员关系。
+
+​	每个broker都有唯一标识符。
+
+​	在关闭broker时，它对应的节点会消失，不过它的ID会继续存在于其他数据结构中。如果相同ID的一个全新的broker启动，它会立即加入集群，并用拥有与旧broker相同的分区和主题。
+
+### 2、控制器
+
+​	控制器其实就是一个broker。只不过它除了具有一般broker的功能外，还负责分区首领的选举。
+
+​	kafka使用zookeeper的临时节点来选举控制器。并且使用epoch来避免“脑裂”。
+
+### 3、复制
+
+​	kafka使用主题来组织数据。每个主题被分为若干个分区。每个分区有多个副本。那些副本被保存在broker上，每个broker可以保存成百上千个属于不同主体和分区的副本
+
+​	副本有两种类型：
+
+* 首领副本
+
+  每个分区都有一个首领副本。为了保证一致性，所有生产者和消费者请求都会经过这个副本。
+
+* 跟随者副本
+
+  首领以外的副本都是跟随者副本。它们唯一的任务就是从首领那里复制消息，保持与首领一致的状态。如果首领发生崩溃，其中一个跟随者就会被提升为新首领。
+
+ 首领的另一个任务是搞清楚哪个跟随者的状态与自己是一致的。
+
+为了与首领保持同步，跟随者向首领发送获取数据的请求，这种请求与消费者为了读取消息而发送的请求是一致的。【请求消息总包含了跟随者想要获取消息的偏移量】。
+
+​		首领通过查看每个跟随者请求的最新偏移量，知道每个跟随者的进度。如果跟随者在10s内没有任何请求消息，或10s内没有请求最新的数据，那么它就会认为是不同步的。
+
+​		不同步的副本在首领失效时是不可能成为新首领的。
+
+### 4、处理请求
+
+​	broker大部分工作时处理客户端、分区副本和控制器发送给分区首领的请求。
+
+​	几种最常见的请求类型：
+
+* 生产者请求
+
+  生产者发送的请求，它包含客户端要写入broker的消息
+
+* 获取请求
+
+  在消费者和跟随者副本需要从broker读取消息时发送的请求。
+
+生产请求和获取请求都必须发送给分区的首领副本。
+
+##### 生产请求
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
