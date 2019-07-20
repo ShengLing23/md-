@@ -20,7 +20,7 @@
 
  ## 体系架构
 
-![1550503896375](img\%5CUsers%5Csurface%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5C1550503896375.png)
+![innodb](img\innodb.png)
 
 ​	后台线程主要作用时负责刷新内存池中的数据，保证缓冲池中的内存缓存的时最新的数据。此外将以修改的数据文件刷新到磁盘文件。
 
