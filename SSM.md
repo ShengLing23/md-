@@ -2,7 +2,7 @@
 
 ​	SpringMVC框架围绕着DispatcherServlet这个核心展开。
 
-![1563465443411](D:\data\md笔记\img\springMvc.png)
+![1563465443411](img\springMvc.png)
 
 ​	SpringMvc处理请求的整体过程：
 
@@ -35,6 +35,12 @@ Boolean canWrite(Class<?> clazz,MediaType mediaType)
 List<MediaType> getSupportedMediaType()
 T read(Class<? extends T> clazz,HttpInputMessage inputMessage)
 void write(T t,MediaType contenType,HttpOutputMessage outputMes)
+
+# canRead:指定转换器可以读取的对象类型，即转换器可将请求信息转换为clazz类型的对象：同时指定支持的MIME媒体类型
+# canWrite:指定转换器可以将clazz类型的对象写到响应流中，响应流支持的类型在mediaType中定义
+# List: 该转换器支持的媒体类型
+# read:将请求信息流转换为T类型的对象
+# write:将T类型的对象写到响应信息流中，同时指定相应的媒体类型为contentType
 ```
 
 
