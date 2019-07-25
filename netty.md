@@ -42,7 +42,7 @@
 
 ​	EventLoop定义了Netty的核心抽象，用于处理连接的生命周期中所发生的事件。
 
-![1552184121310](.\img\%5CUsers%5Csurface%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5C1552184121310.png)
+![1552184121310](.\img\netty1.png)
 
 * 一个EventLoopGroup包含一个或者多个EventLoop
 * 一个EventLoop在它的生命周期内只和一个Thread绑定
@@ -55,8 +55,6 @@
 ​	nettty中所有的IO接口都是异步的。因为一个操作可能不会立即返回。所以我们需要一种在之后的某个时间点确定其结果的方法。
 
 ​	ChannelFuture接口，其addListtener()方法注册了一个ChannelFutureListener,以便在某个操作完成时得到通知。
-
-
 
 ## ChannelHander和ChannelPipeline
 
