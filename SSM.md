@@ -1,3 +1,23 @@
+# Spring
+
+## IOC
+
+>Ioc(Inverse of Control,控制反转)是Spring容器的内核。
+>
+>Ioc的类型
+>
+>> 构造函数注入
+>>
+>> 属性注入
+>>
+>> 接口注入
+>
+>BeanFactory
+>
+>Bean的生命周期
+>
+>
+
 # Spring MVC
 
 ​	SpringMVC框架围绕着DispatcherServlet这个核心展开。
