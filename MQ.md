@@ -217,6 +217,10 @@ broker是集群的组成部分，每个集群都有一个Broker同时充当集�
 >
 > 基于磁盘的数据存储
 >
+> > Kafka不仅支持多个消费者，还允许消费者非实时的读取消息。
+> >
+> > 这要归功于Kafka的数据保留特性。消息被提交到磁盘，根据设置的保留规则进行保存。
+>
 > 伸缩性
 >
 > 高性能
@@ -224,6 +228,27 @@ broker是集群的组成部分，每个集群都有一个Broker同时充当集�
 
 
 ## 安装
+
+## 环境
+
+#### 安装java
+
+#### 安装Zookeeper
+
+#### 命令行操作
+
+```shell
+# 启动服务
+bin/kafka-server-start.sh 
+# 创建主题
+kafka-topic.sh --create --zookeeper localhost:2181 --replication-factor 1  --partitions --topic test
+# 验证主题
+kafka-topic.sh --zookeeper localhost:2181 --describe --topic test
+# 发布消息
+kafka-console-producer.sh --broker-list localhost:9092 --topic test
+# 读取消息
+kafka-console-consumer.sh --zookeeper localhost:2181 --topic test --from-beginning
+```
 
 ### 配置
 
@@ -306,6 +331,48 @@ broker是集群的组成部分，每个集群都有一个Broker同时充当集�
 ![1558333276182](.\img\1558333276182.png)
 
 #### 客户端
+
+>1、设置生产者属性,Kafka生产者有3个必须的属性
+>
+>> bootstrap.servers
+>>
+>> > 指定broker的地址清单，地址格式为`hots:port`
+>> >
+>> > 清单里不需要包含所有broker地址，生产者会从给定的broker里查找其他的broker信息。不过建议至少提供两个broker信息
+>>
+>> key.serializer
+>>
+>> >broker希望接收到的消息的键和值都是字节数组。
+>> >
+>> >该属性设置键的序列化类
+>>
+>> value.serializer
+>>
+>> > 该属性设置值得序列化类
+>>
+>> ```java
+>> Properties kafkaProp = new Properties()
+>> kafkaProp.put("bootstrap.servers","localhost:9092");     kafkaProp.put("key.serializer","org.apache.kafka.common.serialization.StringSerializer");       kafkaProp.put("value.serializer","org.apache.kafka.common.serialization.StringSerializer");
+>> producer = new KafkaProducer(kafkaProp);
+>> ```
+>
+>2、发送消息，有3种发送方式
+>
+>>发送并忘记
+>>
+>>> 把消息发送给服务器，并不关心它是否会正常到达
+>>>
+>>> 可能会丢失一些信息
+>>
+>>同步发送
+>>
+>>> 使用send发送，返回一个Future对象，调用get方法进行等待。
+>>
+>>异步发送
+>>
+>>> 调用send反复，并指定一个回调函数
+
+代码示例：
 
 ```java
 package com.shengling.kafkatest;
@@ -432,11 +499,234 @@ acks=all
 
 【batch.size】
 
+```shell
+# 当有多个消息需要被发送到同意各分区时，生产者会把它们放在同一个批次里。
+# 该参数制定了一个批次可以使用的内存的大小，按照字节数计算。
+# 当批次被填满时，批次里的所有消息会被发送出去。不过亦不一定
+```
+
+【linger.ms】
+
+```shell
+# 该参数指定了生产者在发送批次之前等待更多消息加入批次的时间。
+```
+
+【client.id】
+
+```shell
+# 该参数可以是任意的字符串，服务器会用它来识别消息的来源。还可以用在日志和配额指标里
+```
+
+【max.in.flight.requests.per.connection】
+
+```shell
+# 该蚕食指定了生产者在收到服务器响应之前可以发送多少个消息。它的值越高，就会占用越多的内存，不过也会提升吞吐量。把它设为1，可以保证消息安装发送的顺序写入服务器的 
+```
+
+【timeout.ms、request.timeout.ms和metadata.fetch.timeout.ms】
+
+```shell
+# request.timeout.ms 指定了生产者在发送数据时等待服务器返回响应的时间。
+# metadata.fetch.timeout.ms 制定了生产者在获取源数据时等待服务器响应的时间，如果超时，那么生产者要么重试发送数据，要么返回一个错误
+# timeout.ms 指定了broker等待同步副本返回消息确认的时间，与asks的配置去匹配，如果在指定的时间内没有收到同步副本的确认，那么broker会返回一个错误。
+```
+
+【max.block.ms】
+
+```shell
+# 该参数指定了在调用send()方法或使用partitionsFor()方法获取元数据时生产者的阻塞时间
+```
+
+【max.request.size】
+
+```shell
+# 该参数用于控制生产者发送的请求大小。
+```
+
+【recevie.buffer.bytes和send.buffer.bytes】
+
+```shell
+# 这两个参数指定了TCP socket接收和发送数据报的缓冲区大小。如果置为1，使用操作系统的默认值
+```
+
 ### 序列化器
 
 ## 从Kafka读取数据
 
+> 消费者和消费者群组
+>
+> > Kafka消费者从属于消费者群组。一个群组里的消费者订阅的是同一个主题，每个消费者接收主题一部分分区的消息
+> >
+> > > 消费者的数量不应该超过主题的分区数量，否则超过的部分会被闲置，不会接收任何消息
+>
+> 消费者群组和分区再均衡
+>
+> > 群组里的消费者共同读取主题的分区。一个新的消费者加入群组时，它读取的是原本由其他消费者读取的消息。当一个消息被关闭或发生奔溃时，它会离开群组，原本由它读取的分区将由群组里的其他消费者来读取。
+> >
+> > 分区的所有权从一个消费者转移到另一个消费者，这样的行为被称之为再均衡。
+> >
+> > > 在均衡非常重要，它为消费者群组提供了高可用性和伸缩性。
+> > >
+> > > 在再均衡期间，消费者无法读取消息，造成整个群组一小段时间不可用。
+> > >
+> > > 另外，当分区被重新分配给另一个消费者时，消费者当前的读取状态会丢失。
 
+### 客户端
+
+>1、指定消费者属性,3个必须的属性
+>
+>> bootstrap.servers
+>>
+>> key.deserializer
+>>
+>> value.deserializer
+>>
+>> group.id
+>>
+>> ​	指定消费者属于哪个群组
+>>
+>> ```shell
+>> kafkaProp.put("bootstrap.servers","localhost:9092");   kafkaProp.put("key.deserializer","org.apache.kafka.common.serialization.StringDeserializer");     kafkaProp.put("value.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+>> kafkaProp.put("group.id","consumerGroup");
+>> consumer = new KafkaConsumer(kafkaProp);
+>> ```
+>
+>2、订阅主题
+>
+>>```java
+>>consumer.subscribe(Collections.singletonList("CustomerCountry"));
+>>```
+>>
+>>可以在subscribe方法传入正则表达式，订阅多个主题
+>
+>3、轮询
+>
+>> 消息轮询是消费者API的核心，通过一个简单的轮询向服务器请求数据。
+>>
+>> 一旦消费者订阅了主题，轮询会处理所有的细节，包括群组协调，分区再均衡，发送心跳和获取数据。
+>>
+>> 开发者只需要使用一组简单的API来处理从分区返回的数据。
+>>
+>> ```JAVA
+>> try {
+>> 	while (true) { //1
+>>        //轮询获取信息
+>>        ConsumerRecords<String,String> records =                                                 consumer.poll(100L); //2
+>>         //3
+>> 	   for(ConsumerRecord<String,String> record : records){
+>> 			System.out.println("Entry...");
+>> 	        System.out.println("record-key"+record.key());
+>> 			System.out.println("record- value"+record.value());
+>>        }
+>> 
+>>      }
+>> }finally {
+>>             consumer.close(); // 4
+>> }
+>> ```
+>>
+>> > 1、无限循环。消费者实际上是一个长期运行的应用程序，通过持续轮询向Kafka请求数据
+>> >
+>> > 2、非常重要。参数用来控制poll方法的阻塞时间。如果为0，poll立即返回，否则会在指定的毫秒数内一直等待broker返回数据
+>
+>实例代码
+>
+>> ```java
+>> public class ConsumerDemo {
+>> 
+>>     private Properties kafkaProp = new Properties();
+>>     private KafkaConsumer<String,String> consumer;
+>> 
+>>     public void init(){
+>>         kafkaProp.put("bootstrap.servers","localhost:9092");
+>>         kafkaProp.put("key.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+>>         kafkaProp.put("value.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+>>         kafkaProp.put("group.id","consumerGroup");
+>>         consumer = new KafkaConsumer(kafkaProp);
+>>     }
+>> 
+>>     public void getMessage(){
+>>         consumer.subscribe(Collections.singletonList("CustomerCountry"));
+>>         try {
+>>             while (true) {
+>>                 //轮询获取信息
+>>                 ConsumerRecords<String,String> records = consumer.poll(100L);
+>>                 for(ConsumerRecord<String,String> record : records){
+>>                     System.out.println("Entry...");
+>>                     System.out.println("record-key"+record.key());
+>>                     System.out.println("record-value"+record.value());
+>>                 }
+>> 
+>>             }
+>>         }finally {
+>>             consumer.close();
+>>         }
+>> 
+>>     }
+>> 
+>>     public static void main(String[] args) {
+>>         ConsumerDemo demo = new ConsumerDemo();
+>>         demo.init();
+>>         demo.getMessage();
+>>     }
+>> }
+>> ```
+
+消费者参数
+
+> fetch.min.bytes
+>
+> > 指定了消费者从服务器获取记录的最小字节数
+> >
+> > broker收到消费者请求时，如果可用的数据量小于该参数，会等到有足够的可用数据时才把它返回给消费者。
+>
+> fetch.max.wait.ms
+>
+> > 通过fetch.min.bytes参数告诉Kafka，等到有足够的数据时才返回给消费者。
+> >
+> > 而该参数则用于指定：broker的等待时间，默认为500ms。
+> >
+> > Kafka要么返回fetch.min.bytes指定的数据量，要么延迟指定的时间后，返回。
+>
+> max.partition.fetch.bytes
+>
+> >指定了服务器从每个分区返回给消费者的最大字节数。默认是1MB
+>
+> session.timeout.ms
+>
+> >指定了消费者在被认为死亡之前可以与服务器断开连接的时间。默认是3s
+>
+> auto.offset.reset
+>
+> >指定了消费者在读取一个没有偏移量的分区或者偏移量无效的情况下，该如何处理
+> >
+> >默认是latest。意思：在偏移量无效时，消费者从最新的记录开始读取数据
+> >
+> >另一个earliest。意思：在偏移量无效时，从起始位置读取分区的记录
+>
+> enable.auto.commit
+>
+> > 该属性指定了消费者是否自动提交偏移量。默认是true.
+>
+> partition.assignment.strategy
+>
+> > 分区会被分配给群组里的消费者。PartitionAssignor根据给定的消费者和主题。决定哪些分区应该被分配给那个消费者。Kafka有两个默认的分配策略
+> >
+> > > Pange
+> > >
+> > > RoundRobin
+>
+> client.id
+>
+> > 该属性可以是任意字符串。broker用它来标识客户端发送过来的消息
+>
+> max.poll.records
+>
+> > 该属性用于单词调用call方法能够返回的记录数量
+>
+> receive.buffer.bytes和send.buffer.bytes
+>
+> > TCP缓冲区大小
 
 
 
@@ -494,37 +784,76 @@ acks=all
 
 生产请求和获取请求都必须发送给分区的首领副本。
 
-##### 生产请求
-
-
-
 ## 流式处理
 
-> 什么是数据流(也称之为：事件流或流数据)
->
-> > 特点：
-> >
-> > 1、数据流是无边界数据集的抽象表示
-> > 	无边界意味着无限和持续增长。
-> > 2、事件流是有序的
-> > 3、不可变的数据记录
-> > 4、事件流是可重播的
->
-> 流式处理的一些概念
->
-> > 流式处理的很多方面与普通的数据处理时相似的：
-> >
-> > > 写一些代码来接收数据
+什么是数据流(也称之为：事件流或流数据)
+
+特点：
+
+1、数据流是无边界数据集的抽象表示
+	无边界意味着无限和持续增长。
+2、事件流是有序的
+3、不可变的数据记录
+4、事件流是可重播的
+
+###  流式处理的一些概念
+
+流式处理的很多方面与普通的数据处理时相似的：
+
+写一些代码来接收数据
+
+对数据进行处理（可能做一些转换，聚合和增强的操作）
+
+然后把结果输出到某些个地方
+
+#### 时间窗口
+
+> > > 大部分针对流的操作都是基于时间窗口的，比如移动平均数、一周内销量最好的产品，系统的99百分位等。
 > > >
-> > > 对数据进行处理（可能做一些转换，聚合和增强的操作）
+> > > 两个流的合并操作也是基于时间窗口的，我们会合并相同时间片段上的事件。
 > > >
-> > > 然后把结果输出到某些个地方
+> > > 示例：在计算平均数时，需要知道一下几个问题
+> > >
+> > > > 窗口的大小
+> > > >
+> > > > > 是基于5分钟进行平均，还是15分钟。
+> > > > >
+> > > > > 窗口越小，越能越快的发现变更。
+> > > > >
+> > > > > 窗口越大，变更越平缓，不过延迟越小
+> > > >
+> > > > 窗口的移动频率（移动间隔）
+> > > >
+> > > > > 5分钟的平均数可以每分钟变化一次，或者每秒钟变化一次，或者每当有新事件到达时发生变化。
+> > > > >
+> > > > > 如果移动间隔与窗口大小相等，这种情况被称为”滚动窗口“
+> > > > >
+> > > > > 如果窗口随每一条记录移动，这种情况称之为“滑动窗口”
+> > > >
+> > > > 窗口的可更新时间多长
+> > > >
+> > > > > 假设计算了00:00~00:05之间的移动平均数，一个小时后又得到了一些事件时间是00:02的事件，那么需要更新00:00~00:05这个窗口的结果吗？
+> > > > >
+> > > > > 或者就这么算了？理想情况下，可以定义一个时间段，在这个时间段内，事件可以被添加到与他们相应的时间片段里。否则，则忽略它们
 > >
-> > 时间
-> >
-> > > 时间或许是流式处理的最为重要的概念，
-> >
-> > 
+
+### 流式处理的设计模式
+
+#### 单个事件处理
+
+#### 使用本地状态
+
+#### 多阶段处理和重分区
+
+#### 使用外部查找—流和表的连接
+
+#### 流与流的连接
+
+#### 乱序的事件
+
+#### 重新处理
+
+
 
 
 
